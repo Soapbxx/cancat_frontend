@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { PencilIcon, CheckIcon, XIcon } from 'lucide-react';
 
 interface Tag {
   id: number;
@@ -10,6 +11,7 @@ interface Transaction {
   id: number;
   date: string;
   label: string;
+  custom: string | null;
   amount: number;
   tags: { tag: Tag }[];
 }
@@ -18,6 +20,8 @@ const TransactionList: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingLabelId, setEditingLabelId] = useState<number | null>(null);
+  const [editingLabel, setEditingLabel] = useState<string>('');
   const [newTagName, setNewTagName] = useState('');
 
   useEffect(() => {
@@ -46,8 +50,47 @@ const TransactionList: React.FC = () => {
     setEditingId(null);
   };
 
+  const handleUpdateCustomLabel = async (transaction: Transaction, customLabel: string) => {
+    try {
+      // Create an updated transaction object
+      const updatedTransaction = {
+        ...transaction,
+        custom: customLabel
+      };
+      
+      // Send the full updated transaction object
+      await axios.put(`http://localhost:3001/transactions/${transaction.id}`, updatedTransaction);
+      
+      // Update the local state
+      setTransactions(transactions.map(t => 
+        t.id === transaction.id ? { ...t, custom: customLabel } : t
+      ));
+      
+      setEditingLabelId(null);
+      setEditingLabel('');
+    } catch (error) {
+      console.error("Error updating custom label:", error);
+      // You might want to show an error message to the user here
+    }
+  };
+
   const handleEdit = (id: number) => {
     setEditingId(id);
+  };
+
+  const handleEditLabel = (transaction: Transaction) => {
+    setEditingLabelId(transaction.id);
+    setEditingLabel(transaction.custom || transaction.label);
+  };
+
+  const handleSaveLabel = async (transaction: Transaction) => {
+    await handleUpdateCustomLabel(transaction, editingLabel);
+    setEditingLabelId(null);
+  };
+
+  const handleCancelLabelEdit = () => {
+    setEditingLabelId(null);
+    setEditingLabel('');
   };
 
   const handleAddTag = async () => {
@@ -139,15 +182,37 @@ const TransactionList: React.FC = () => {
                   )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  {editingId === transaction.id ? (
-                    <input 
-                      type="text" 
-                      value={transaction.label} 
-                      onChange={(e) => setTransactions(transactions.map(t => t.id === transaction.id ? {...t, label: e.target.value} : t))}
-                      className="form-input rounded-md shadow-sm mt-1 block w-full outline-none"
-                    />
+                  {editingLabelId === transaction.id ? (
+                    <div className="flex items-center">
+                      <input 
+                        type="text" 
+                        value={editingLabel}
+                        onChange={(e) => setEditingLabel(e.target.value)}
+                        className="form-input rounded-md shadow-sm mt-1 block w-full outline-none mr-2"
+                      />
+                      <button 
+                        onClick={() => handleSaveLabel(transaction)} 
+                        className="text-green-600 hover:text-green-900 mr-2"
+                      >
+                        <CheckIcon size={16} />
+                      </button>
+                      <button 
+                        onClick={handleCancelLabelEdit} 
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        <XIcon size={16} />
+                      </button>
+                    </div>
                   ) : (
-                    transaction.label
+                    <div className="flex items-center">
+                      <span className="mr-2">{transaction.custom || transaction.label}</span>
+                      <button 
+                        onClick={() => handleEditLabel(transaction)} 
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        <PencilIcon size={16} />
+                      </button>
+                    </div>
                   )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
