@@ -1,22 +1,48 @@
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import React from 'react';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import SignIn from './pages/SignIn';
+import SignUp from './pages/SignUp';
+import TransactionsPage from './pages/TransactionsPage';
 import Header from './components/Header';
-import TransactionList from './components/TransactionList';
-import UploadCSV from './components/UploadCSV';
+import Subheader from './components/Subheader';
 
-function App() {
+const App: React.FC = () => {
+  const [isAuthenticated, setIsAuthenticated] = React.useState(false);
+
+  React.useEffect(() => {
+    const accessToken = localStorage.getItem('accessToken');
+    const refreshToken = localStorage.getItem('refreshToken');
+
+
+    if (accessToken && refreshToken) {
+      console.log('User is authenticated');
+      console.log("Auth: ", isAuthenticated);
+      setIsAuthenticated(true);
+    }
+  }, []);
+
   return (
     <Router>
       <div className="min-h-screen bg-gray-100">
-        <Header />
-        <main className="container mx-auto px-4 py-8">
-          <Routes>
-            <Route path="/" element={<TransactionList />} />
-            <Route path="/upload" element={<UploadCSV />} />
-          </Routes>
-        </main>
+        <Routes>
+          <Route path="/signin" element={<SignIn />} />
+          <Route path="/signup" element={<SignUp />} />
+          <Route 
+            path="/transactions" 
+            element={
+                <>
+                  <Header />
+                  <Subheader />
+                  <TransactionsPage />
+                </>
+            } 
+          />
+          <Route path="/" element={<Navigate to="/transactions" replace />} />
+          <Route path="*" element={<Navigate to="/transactions" replace />} />
+        </Routes>
       </div>
     </Router>
   );
-}
+};
 
 export default App;
