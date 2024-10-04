@@ -2,7 +2,9 @@ import axios from "axios";
 
 // https://cancat.io/
 
-const API_BASE_URL = "https://cancat.io/api";
+// const API_BASE_URL = "https://cancat.io/api";
+
+const API_BASE_URL = "http://localhost:3001/api";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -64,6 +66,16 @@ export const fetchTransactions = async (page: number, limit: number) => {
   }
 };
 
+export const putTransaction = async (id:number, transaction: any) => {
+  try {
+    const response = await api.put(`/transactions/${id}`, transaction);
+    return response.data;
+  } catch (error) {
+    console.error("Error updating transaction:", error);
+    throw error;
+  }
+}
+
 export const fetchUser = async () => {
   try {
     const response = await api.get("/user");
@@ -120,6 +132,49 @@ export const uploadcsvfile = async (file: File) => {
         console.error("Error uploading file:", error);
         throw error;
     }
+}
+
+export const googleSignIn = async (credentialResponse: any) => {
+  try {
+    const response = await api.post("/auth/google", {
+      credential: credentialResponse.credential,
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error("Error signing in with Google:", error);
+    throw error;
+  }
+}
+
+export const plaidGetLinkToken = async () => {
+  try {
+    const response = await api.post("/create_link_token");
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching Plaid link token:", error);
+    throw error;
+  }
+}
+
+export const plaidSetAccessToken = async (publicToken: string, metadata: any) => {
+  try {
+    const response = await api.post("/set_access_token", { public_token: publicToken, institution: metadata });
+    return response.data;
+  } catch (error) {
+    console.error("Error setting Plaid access token:", error);
+    throw error;
+  }
+}
+
+export const plaidGetAccounts = async () => {
+  try {
+    const response = await api.get("/accounts");
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching Plaid accounts:", error);
+    throw error;
+  }
 }
 
 export default api;

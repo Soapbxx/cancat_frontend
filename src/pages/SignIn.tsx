@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { IoClose } from "react-icons/io5";
-import { signIn, verifyOtp } from "../utils/api";
+import { signIn, verifyOtp, googleSignIn } from "../utils/api";
+import { GoogleLogin } from "@react-oauth/google";
 
 const SignIn: React.FC = () => {
   const [step, setStep] = useState(1);
@@ -52,6 +53,28 @@ const SignIn: React.FC = () => {
 
     if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleSuccess = async (credentialResponse: any) => {
+    try {
+      const res = await googleSignIn(credentialResponse);
+
+      if (res.status === "success") {
+        localStorage.setItem("accessToken", res.accessToken);
+        localStorage.setItem("refreshToken", res.refreshToken);
+        window.location.href = "/transactions";
+      } else {
+        setError(res.message);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error("Error details:", {
+          message: error.message,
+          stack: error.stack,
+        });
+        setError(error.message);
+      }
     }
   };
 
@@ -132,6 +155,37 @@ const SignIn: React.FC = () => {
         >
           Sign in
         </button>
+      </div>
+      <div className="mt-2">
+        <div
+          className="w-full flex justify-center"
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            width: "100%",
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "100%",
+              minWidth: "100%",
+            }}
+          >
+            <GoogleLogin
+              onSuccess={handleSuccess}
+              onError={() => {
+                console.log("Login Failed");
+              }}
+              theme="outline"
+              size="large"
+              width="100%"
+              text="signin_with"
+              shape="rectangular"
+              useOneTap
+            />
+          </div>
+        </div>
       </div>
     </form>
   );

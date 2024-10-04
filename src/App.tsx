@@ -1,4 +1,5 @@
 import React from 'react';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
@@ -8,6 +9,7 @@ import Subheader from './components/Subheader';
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = React.useState(false);
+  const clientId = "980253608759-krprok4is8kto2rc79ft0kggad8lmhq5.apps.googleusercontent.com";
 
   React.useEffect(() => {
     const accessToken = localStorage.getItem('accessToken');
@@ -22,6 +24,7 @@ const App: React.FC = () => {
   }, []);
 
   return (
+    <GoogleOAuthProvider clientId={clientId}>
     <Router>
       <div className="min-h-screen bg-gray-100">
         <Routes>
@@ -42,6 +45,7 @@ const App: React.FC = () => {
         </Routes>
       </div>
     </Router>
+    </GoogleOAuthProvider>
   );
 };
 

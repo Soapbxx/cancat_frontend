@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { LuPencil, LuFlag, LuEyeOff, LuSearch } from "react-icons/lu";
-import { fetchTransactions } from "../utils/api";
+import { fetchTransactions, putTransaction } from "../utils/api";
 
 interface Transaction {
   id: number;
@@ -8,8 +8,8 @@ interface Transaction {
   label: string;
   amount: number;
   tag: string;
-  pb: "p" | "b";
-  flagged: boolean;
+  pandb: boolean;
+  flag: boolean;
   hidden: boolean;
   m: boolean;
   source: string;
@@ -35,16 +35,7 @@ const TransactionsTable: React.FC = () => {
         return;
       }
 
-      const trans = data.transactions.map((transaction: Transaction) => ({
-        ...transaction,
-        pb: Math.random() > 0.5 ? "p" : "b",
-        flagged: Math.random() > 0.5,
-        hidden: Math.random() > 0.5,
-        m: Math.random() > 0.5,
-        source: Math.random() > 0.5 ? "Card" : "Cash",
-      }));
-
-      setRowData(trans);
+      setRowData(data.transactions);
       setTotalRecords(data.totalRecords); // Assuming the API returns total number of records
       setCurrentPage(page);
     } catch (error) {
@@ -103,6 +94,26 @@ const TransactionsTable: React.FC = () => {
         ? prevSelected.filter((rowId) => rowId !== id)
         : [...prevSelected, id]
     );
+  };
+
+  const handleUpdaterow = async (
+    id: number,
+    key: keyof Transaction,
+    value: any
+  ) => {
+    const transaction = rowData.find((t) => t.id === id);
+    if (!transaction) {
+      return;
+    }
+    (transaction[key] as any) = value;
+    try {
+      await putTransaction(id, transaction);
+      setRowData((prevData) =>
+        prevData.map((t) => (t.id === id ? { ...t, [key]: value } : t))
+      );
+    } catch (error) {
+      console.error("Error updating transaction:", error);
+    }
   };
 
   return (
@@ -175,8 +186,8 @@ const TransactionsTable: React.FC = () => {
                               className="px-3 py-2 border rounded w-full"
                             />
                           </div>
-                          <div className="flex flex-wrap justify-center mt-3">
-                            <div className="mr-4 mb-2">
+                          <div className="flex flex-col items-start mt-3 px-7">
+                            <div className="mb-2">
                               <input
                                 type="checkbox"
                                 id="feature1"
@@ -184,7 +195,7 @@ const TransactionsTable: React.FC = () => {
                               />
                               <label htmlFor="feature1">Feature 1</label>
                             </div>
-                            <div className="mr-4 mb-2">
+                            <div className="mb-2">
                               <input
                                 type="checkbox"
                                 id="feature2"
@@ -232,33 +243,61 @@ const TransactionsTable: React.FC = () => {
                 </td>
                 <td className="p-3">
                   <span className="bg-gray-100 text-black rounded-full px-2 py-1 text-sm font-medium">
-                    {transaction.tag}
+                    {transaction.tag == null ? "None" : transaction.tag}
                   </span>
                 </td>
-                <td className="p-3">
+                <td
+                  className="p-3"
+                  onClick={() =>
+                    handleUpdaterow(transaction.id, "pandb", !transaction.pandb)
+                  }
+                >
                   <span
                     className={`rounded-full px-2 py-1 ${
-                      transaction.pb === "p" ? "bg-green-100" : "bg-blue-100"
-                    } text-black text-sm`}
+                      transaction.pandb === false
+                        ? "bg-green-100"
+                        : "bg-blue-100"
+                    } text-black text-sm hover:cursor-pointer`}
                   >
-                    {transaction.pb.toUpperCase()}
+                    {transaction.pandb ? "B" : "P"}
                   </span>
                 </td>
-                <td className="p-3 text-lg">
+                <td
+                  className="p-3 text-lg"
+                  onClick={() =>
+                    handleUpdaterow(transaction.id, "flag", !transaction.flag)
+                  }
+                >
                   <LuFlag
                     className={
-                      transaction.flagged ? "text-red-500" : "text-gray-400"
+                      transaction.flag ? "text-red-500" : "text-gray-400"
                     }
                   />
                 </td>
-                <td className="p-3 text-lg">
+                <td
+                  className="p-3 text-lg"
+                  onClick={() =>
+                    handleUpdaterow(
+                      transaction.id,
+                      "hidden",
+                      !transaction.hidden
+                    )
+                  }
+                >
                   <LuEyeOff
                     className={
                       transaction.hidden ? "text-blue-500" : "text-gray-400"
                     }
                   />
                 </td>
-                <td className="p-3">{transaction.m ? "Yes" : "No"}</td>
+                <td
+                  className="p-3"
+                  onClick={() =>
+                    handleUpdaterow(transaction.id, "m", !transaction.m)
+                  }
+                >
+                  {transaction.m ? "Yes" : "No"}
+                </td>
                 <td className="p-3">{transaction.source}</td>
               </tr>
             ))}
