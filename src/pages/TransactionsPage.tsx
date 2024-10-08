@@ -2,24 +2,9 @@ import React, { useState, useCallback, useEffect } from "react";
 import { usePlaidLink } from "react-plaid-link";
 import Filters from "../components/Filters";
 import TransactionsTable from "../components/TransactionsTable";
-import { plaidGetLinkToken, plaidSetAccessToken, plaidGetAccounts } from "../utils/api";
-
-// Define the Account interface
-interface Account {
-  id: number;
-  name: string;
-  officialName?: string;
-  type: string;
-  subtype?: string;
-  mask?: string;
-  currentBalance?: number;
-  availableBalance?: number;
-  isoCurrencyCode?: string;
-  plaidItem: {
-    plaidInstitutionId: string;
-    status: string;
-  };
-}
+import { plaidGetLinkToken, plaidSetAccessToken, plaidGetAccounts, plaidDeleteAccount, plaidAccountsSync } from "../utils/api";
+import { RiDeleteBin2Line } from "react-icons/ri";
+import { Account } from "../utils/types";
 
 const TransactionsPage: React.FC = () => {
   const [isFilterVisible, setIsFilterVisible] = useState(false);
@@ -41,6 +26,16 @@ const TransactionsPage: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  const syncAccounts = async () => {
+    try {
+      await plaidAccountsSync();
+      await getAccounts();
+    } catch (err) {
+      setError("Failed to sync accounts");
+      console.error("Error syncing accounts:", err);
+    }
+  }
 
   const onSuccess = useCallback(async (public_token: string, metadata: any) => {
     try {
@@ -79,6 +74,16 @@ const TransactionsPage: React.FC = () => {
     },
   };
 
+  const deleteAccount = async (accountId: number) => {
+    try {
+      await plaidDeleteAccount(accountId);
+      await getAccounts();
+    } catch (err) {
+      setError("Failed to delete account");
+      console.error("Error deleting account:", err);
+    }
+  }
+
   const { open, ready } = usePlaidLink(config);
 
   return (
@@ -105,6 +110,12 @@ const TransactionsPage: React.FC = () => {
         >
           Connect a bank account
         </button>
+        <button
+          onClick={syncAccounts}
+          className="p-2 bg-[#4338ca] text-white rounded hover:bg-blue-600"
+        >
+          Refresh
+        </button>
       </div>
 
       <div className="mb-6">
@@ -117,7 +128,7 @@ const TransactionsPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {accounts.map((account) => (
               <div key={account.id} className="border rounded p-4">
-                <h3 className="font-semibold">{account.name}</h3>
+                <h3 className="font-semibold flex justify-between">{account.name} <span className="text-red-500 hover:cursor-pointer" onClick={() => deleteAccount(account.id)}><RiDeleteBin2Line/></span></h3>
                 {account.officialName && (
                   <p className="text-gray-600">{account.officialName}</p>
                 )}

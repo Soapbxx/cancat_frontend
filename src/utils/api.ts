@@ -2,9 +2,9 @@ import axios from "axios";
 
 // https://cancat.io/
 
-// const API_BASE_URL = "https://cancat.io/api";
+const API_BASE_URL = "https://cancat.io/api";
 
-const API_BASE_URL = "http://localhost:3001/api";
+// const API_BASE_URL = "http://localhost:3001/api";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -147,6 +147,16 @@ export const googleSignIn = async (credentialResponse: any) => {
   }
 }
 
+export const editTransactionLabel = async (transactionId: number, label: string, replaceAllLabel: boolean = false, applyToFuture: boolean = false) => {
+  try {
+    const response = await api.put(`/transactions/${transactionId}`, { label, replaceAllLabel, applyToFuture });
+    return response.data;
+  } catch (error) {
+    console.error("Error updating transaction label:", error);
+    throw error;
+  }
+}
+
 export const plaidGetLinkToken = async () => {
   try {
     const response = await api.post("/create_link_token");
@@ -173,6 +183,47 @@ export const plaidGetAccounts = async () => {
     return response.data;
   } catch (error) {
     console.error("Error fetching Plaid accounts:", error);
+    throw error;
+  }
+}
+
+export const plaidAccountsSync = async () => {
+  try {
+    const response = await api.post("/accounts/sync");
+    return response.data;
+  } catch (error) {
+    console.error("Error syncing Plaid accounts:", error);
+    throw error;
+  }
+}
+
+export const plaidDeleteAccount = async (accountId: number) => {
+  try {
+    const response = await api.delete(`/accounts/${accountId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error deleting Plaid account:", error);
+    throw error;
+  }
+}
+
+// rules api
+export const fetchRules = async () => {
+  try {
+    const response = await api.get("/rules");
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching rules:", error);
+    throw error;
+  }
+}
+
+export const deleteRule = async (ruleId: number) => {
+  try {
+    const response = await api.delete(`/rules/${ruleId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error deleting rule:", error);
     throw error;
   }
 }

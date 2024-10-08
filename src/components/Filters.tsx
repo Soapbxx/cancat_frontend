@@ -1,5 +1,7 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { uploadcsvfile } from "../utils/api";
+import { plaidGetAccounts } from "../utils/api";
+import { Account } from "../utils/types";
 
 interface Member {
   id: string;
@@ -28,6 +30,29 @@ const Filters: React.FC = () => {
   const [uploadSource, setUploadSource] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const getAccounts = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await plaidGetAccounts();
+      setAccounts(response.accounts);
+    } catch (err) {
+      setError("Failed to fetch accounts");
+      console.error("Error fetching accounts:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    getAccounts();
+    console.log("is loading", isLoading);
+    console.log("error", error);
+  }, []);
 
   // Mock data (replace with actual data from your API)
   const members: Member[] = [
@@ -228,16 +253,16 @@ const Filters: React.FC = () => {
       <div className="mb-4">
         <h3 className="font-semibold mb-2">Sources</h3>
         <div className="grid grid-cols-2 sm:grid-cols-1 gap-2">
-          {sources.map((source) => (
-            <div key={source.id} className="flex items-center">
+          {accounts.map((account) => (
+            <div key={account.id} className="flex items-center">
               <input
                 type="checkbox"
-                id={`source-${source.id}`}
-                checked={selectedSources.includes(source.id)}
-                onChange={() => handleSourceToggle(source.id)}
+                id={`source-${account.id}`}
+                checked={selectedSources.includes(account.id.toString())}
+                onChange={() => handleSourceToggle(account.id.toString())}
                 className="mr-2"
               />
-              <label htmlFor={`source-${source.id}`}>{source.name}</label>
+              <label htmlFor={`source-${account.id}`}>{account.name}</label>
             </div>
           ))}
         </div>
