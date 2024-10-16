@@ -1,9 +1,6 @@
 import axios from "axios";
 
-// https://cancat.io/
-
 const API_BASE_URL = "https://cancat.io/api";
-
 // const API_BASE_URL = "http://localhost:3001/api";
 
 const api = axios.create({
@@ -48,6 +45,11 @@ api.interceptors.response.use(
     if (error.response && error.response.status === 401) {
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
+      // clear headers
+      delete api.defaults.headers.common["Authorization"];
+      delete api.defaults.headers.common["x-refresh-token"];
+      delete api.defaults.headers.common["x-new-access-token"];
+      delete api.defaults.headers.common["x-new-refresh-token"];
       window.location.href = "/signin";
     }
     return Promise.reject(error);
@@ -85,6 +87,18 @@ export const fetchUser = async () => {
     throw error;
   }
 };
+
+export const updateUser = async (name: string | null, picture: string | null) => {
+  try {
+    if (!name) name = null;
+    if (!picture) picture = null;
+    const response = await api.put("/user", { name, picture });
+    return response.data;
+  } catch (error) {
+    console.error("Error updating user:", error);
+    throw error;
+  }
+}
 
 export const signIn = async (email: string, password: string) => {
   try {
@@ -227,5 +241,112 @@ export const deleteRule = async (ruleId: number) => {
     throw error;
   }
 }
+
+// Invitations api
+export const inviteUser = async (email: string) => {
+  try {
+    const response = await api.post("/invitations", { email });
+    return response.data;
+  } catch (error) {
+    console.error("Error sending invitation:", error);
+    throw error;
+  }
+}
+
+export const getInvitations = async () => {
+  try {
+    const response = await api.get("/invitations");
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching invitations:", error);
+    throw error;
+  }
+}
+
+export const getInvitationDetails = async (invitationId: string) => {
+  try {
+    const response = await api.get(`/invitations/${invitationId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching invitation details:", error);
+    throw error;
+  }
+}
+
+export const acceptInvitation = async (invitationId: number) => {
+  try {
+    const response = await api.post(`/invitations/${invitationId}/accept`);
+    return response.data;
+  } catch (error) {
+    console.error("Error accepting invitation:", error);
+    throw error;
+  }
+}
+
+export const rejectInvitation = async (invitationId: number) => {
+  try {
+    const response = await api.post(`/invitations/${invitationId}/reject`);
+    return response.data;
+  } catch (error) {
+    console.error("Error rejecting invitation:", error);
+    throw error;
+  }
+}
+
+export const getSharedTransactions = async (userId: number, page: number, itemsPerPage: number) => {
+  try {
+    const response = await api.post(`/shared-transactions`, {
+      userId,
+      page,
+      itemsPerPage
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching shared transactions:", error);
+    throw error;
+  }
+}
+
+export const getMembers = async () => {
+  try {
+    const response = await api.get("/members");
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching members:", error);
+    throw error;
+  }
+}
+
+// Tags api
+export const getTags = async () => {
+  try {
+    const response = await api.get("/tags");
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching tags:", error);
+    throw error;
+  }
+}
+
+export const addTag = async (name: string) => {
+  try {
+    const response = await api.post("/tags", { name });
+    return response.data;
+  } catch (error) {
+    console.error("Error adding tag:", error);
+    throw error;
+  }
+}
+
+export const updateTransactionTag = async (transactionId: number, tagId: number) => {
+  try {
+    const response = await api.put(`/transactions/${transactionId}/tag`, { tagId });
+    return response.data;
+  } catch (error) {
+    console.error("Error updating transaction tag:", error);
+    throw error;
+  }
+}
+
 
 export default api;

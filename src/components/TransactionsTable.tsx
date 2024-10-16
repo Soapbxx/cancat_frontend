@@ -1,34 +1,32 @@
 import React, { useEffect, useState } from "react";
-import { LuPencil, LuFlag, LuEyeOff, LuSearch } from "react-icons/lu";
+import {
+  LuPencil,
+  LuFlag,
+  LuEyeOff,
+  LuSearch,
+  LuPlus,
+  LuX,
+} from "react-icons/lu";
 import {
   fetchTransactions,
   putTransaction,
   editTransactionLabel,
+  updateTransactionTag,
   fetchRules,
   deleteRule,
+  getSharedTransactions,
+  getTags,
+  addTag,
 } from "../utils/api";
+import { Rules, Transaction, Tag } from "../utils/types";
 
-interface Transaction {
-  id: number;
-  date: string;
-  label: string;
-  amount: number;
-  custom: string | null;
-  tag: string;
-  pandb: boolean;
-  flag: boolean;
-  hidden: boolean;
-  m: boolean;
-  source: string;
+interface TransactionsTableProps {
+  sharedUserId?: number;
 }
 
-interface Rules {
-  id: number;
-  label: string;
-  nickname: string;
-}
-
-const TransactionsTable: React.FC = () => {
+const TransactionsTable: React.FC<TransactionsTableProps> = ({
+  sharedUserId,
+}) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [editingLabel, setEditingLabel] = useState<number | null>(null);
   const [newLabel, setNewLabel] = useState("");
@@ -39,10 +37,22 @@ const TransactionsTable: React.FC = () => {
   const [replaceAllLabel, setReplaceAllLabel] = useState(false);
   const [applyToFuture, setApplyToFuture] = useState(false);
   const [rulesData, setRulesData] = useState<Rules[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [showTagDialog, setShowTagDialog] = useState(false);
+  const [selectedTransactionId, setSelectedTransactionId] = useState<
+    number | null
+  >(null);
+  const [newTagName, setNewTagName] = useState("");
+  const [searchTag, setSearchTag] = useState("");
 
   const fetchData = async (page: number) => {
     try {
-      const data = await fetchTransactions(page, itemsPerPage);
+      let data;
+      if (sharedUserId) {
+        data = await getSharedTransactions(sharedUserId, page, itemsPerPage);
+      } else {
+        data = await fetchTransactions(page, itemsPerPage);
+      }
 
       if (data.status !== "success") {
         localStorage.removeItem("accessToken");
@@ -52,7 +62,7 @@ const TransactionsTable: React.FC = () => {
       }
 
       setRowData(data.transactions);
-      setTotalRecords(data.totalRecords); // Assuming the API returns total number of records
+      setTotalRecords(data.totalRecords);
       setCurrentPage(page);
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -63,7 +73,6 @@ const TransactionsTable: React.FC = () => {
     try {
       const data = await fetchRules();
       setRulesData(data);
-      console.log(data);
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -78,10 +87,60 @@ const TransactionsTable: React.FC = () => {
     }
   };
 
+  const fetchTags = async () => {
+    try {
+      const data = await getTags();
+      console.log("Tags:", data);
+      setTags(data);
+    } catch (error) {
+      console.error("Error fetching tags:", error);
+    }
+  };
+
+  const handleAddCustomTag = async () => {
+    if (newTagName.trim()) {
+      try {
+        const newTag = await addTag(newTagName);
+        setTags([...tags, newTag]);
+        handleTagChange(selectedTransactionId!, newTag.id);
+        setNewTagName("");
+      } catch (error) {
+        console.error("Error adding custom tag:", error);
+      }
+    }
+  };
+
+  const handleTagChange = async (
+    transactionId: number,
+    tagId: number
+  ) => {
+    try {
+      await updateTransactionTag(transactionId, tagId);
+      fetchData(currentPage);
+      setShowTagDialog(false);
+    } catch (error) {
+      console.error("Error updating tag:", error);
+    }
+  };
+
+  const openTagDialog = (transactionId: number) => {
+    setSelectedTransactionId(transactionId);
+    setShowTagDialog(true);
+  };
+
+  const filteredTags = tags.filter((tag) =>
+    tag.name.toLowerCase().includes(searchTag.toLowerCase())
+  );
+
   useEffect(() => {
     fetchData(1);
     fetchRulesData();
+    fetchTags();
   }, []);
+
+  useEffect(() => {
+    fetchData(1);
+  }, [sharedUserId]);
 
   const handleNextPage = () => {
     fetchData(currentPage + 1);
@@ -175,7 +234,9 @@ const TransactionsTable: React.FC = () => {
     <>
       <div className="w-full p-4 bg-white rounded shadow">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
-          <h2 className="text-xl font-bold mb-2 sm:mb-0">Transactions</h2>
+          <h2 className="text-xl font-bold mb-2 sm:mb-0">
+            {sharedUserId ? `Shared Transactions` : "Your Transactions"}
+          </h2>
           <div className="relative w-full sm:w-auto">
             <input
               type="text"
@@ -215,16 +276,18 @@ const TransactionsTable: React.FC = () => {
                   className="border-b border-gray-200 hover:bg-gray-50"
                 >
                   <td className="p-3 flex justify-center">
-                    <input
-                      type="checkbox"
-                      checked={selectedRows.includes(transaction.id)}
-                      onChange={() => handleSelectRow(transaction.id)}
-                      className="w-4 h-4"
-                    />
+                    {!sharedUserId && (
+                      <input
+                        type="checkbox"
+                        checked={selectedRows.includes(transaction.id)}
+                        onChange={() => handleSelectRow(transaction.id)}
+                        className="w-4 h-4"
+                      />
+                    )}
                   </td>
                   <td className="p-3">{transaction.date}</td>
                   <td className="p-3">
-                    {editingLabel === transaction.id ? (
+                    {editingLabel === transaction.id && !sharedUserId ? (
                       <div
                         className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full"
                         id="my-modal"
@@ -304,32 +367,36 @@ const TransactionsTable: React.FC = () => {
                                 {transaction.label}
                               </span>
                             </span>
-                            <button
-                              onClick={() =>
-                                handleLabelEdit(
-                                  transaction.id,
-                                  transaction.custom ?? transaction.label
-                                )
-                              }
-                              className="ml-2"
-                            >
-                              <LuPencil className="text-gray-400" />
-                            </button>
+                            {!sharedUserId && (
+                              <button
+                                onClick={() =>
+                                  handleLabelEdit(
+                                    transaction.id,
+                                    transaction.custom ?? transaction.label
+                                  )
+                                }
+                                className="ml-2"
+                              >
+                                <LuPencil className="text-gray-400" />
+                              </button>
+                            )}
                           </div>
                         ) : (
                           <div className="flex items-center">
                             {transaction.label}
-                            <button
-                              onClick={() =>
-                                handleLabelEdit(
-                                  transaction.id,
-                                  transaction.label
-                                )
-                              }
-                              className="ml-2"
-                            >
-                              <LuPencil className="text-gray-400" />
-                            </button>
+                            {!sharedUserId && (
+                              <button
+                                onClick={() =>
+                                  handleLabelEdit(
+                                    transaction.id,
+                                    transaction.label
+                                  )
+                                }
+                                className="ml-2"
+                              >
+                                <LuPencil className="text-gray-400" />
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
@@ -339,8 +406,11 @@ const TransactionsTable: React.FC = () => {
                     ${transaction.amount.toFixed(2)}
                   </td>
                   <td className="p-3">
-                    <span className="bg-gray-100 text-black rounded-full px-2 py-1 text-sm font-medium">
-                      {transaction.tag == null ? "None" : transaction.tag}
+                    <span
+                      className="bg-gray-100 text-black rounded-full px-2 py-1 text-sm font-medium cursor-pointer"
+                      onClick={() => openTagDialog(transaction.id)}
+                    >
+                      {transaction.tag ? transaction.tag.name : "None"}
                     </span>
                   </td>
                   <td
@@ -435,41 +505,93 @@ const TransactionsTable: React.FC = () => {
           </div>
         </div>
       </div>
-      <div className="w-full p-4 bg-white rounded shadow mt-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
-          <h2 className="text-xl font-bold mb-2 sm:mb-0">Rules</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="p-3 text-left">Label</th>
-                <th className="p-3 text-left">Nickname</th>
-                <th className="p-3 text-left">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rulesData.map((rule) => (
-                <tr
-                  key={rule.id}
-                  className="border-b border-gray-200 hover:bg-gray-50"
-                >
-                  <td className="p-3 text-left">{rule.label}</td>
-                  <td className="p-3 text-left">{rule.nickname}</td>
-                  <td className="p-3 text-left">
-                    <button
-                      onClick={() => deleteRuleData(rule.id)}
-                      className="text-red-500"
-                    >
-                      Delete
-                    </button>
-                  </td>
+      {!sharedUserId && (
+        <div className="w-full p-4 bg-white rounded shadow mt-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+            <h2 className="text-xl font-bold mb-2 sm:mb-0">Rules</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="p-3 text-left">Label</th>
+                  <th className="p-3 text-left">Nickname</th>
+                  <th className="p-3 text-left">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {rulesData.map((rule) => (
+                  <tr
+                    key={rule.id}
+                    className="border-b border-gray-200 hover:bg-gray-50"
+                  >
+                    <td className="p-3 text-left">{rule.label}</td>
+                    <td className="p-3 text-left">{rule.nickname}</td>
+                    <td className="p-3 text-left">
+                      <button
+                        onClick={() => deleteRuleData(rule.id)}
+                        className="text-red-500"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
+      {showTagDialog && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
+          <div className="bg-white p-5 rounded-lg w-96">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Select or Add Tag</h3>
+              <button
+                onClick={() => setShowTagDialog(false)}
+                className="text-gray-500"
+              >
+                <LuX />
+              </button>
+            </div>
+            <input
+              type="text"
+              placeholder="Search tags..."
+              value={searchTag}
+              onChange={(e) => setSearchTag(e.target.value)}
+              className="w-full p-2 border rounded mb-4"
+            />
+            <div className="max-h-60 overflow-y-auto mb-4">
+              {filteredTags.map((tag) => (
+                <div
+                  key={tag.id}
+                  className="cursor-pointer p-2 hover:bg-gray-100 rounded"
+                  onClick={() =>
+                    handleTagChange(selectedTransactionId!, parseInt(tag.id))
+                  }
+                >
+                  {tag.name}
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center">
+              <input
+                type="text"
+                placeholder="New tag name"
+                value={newTagName}
+                onChange={(e) => setNewTagName(e.target.value)}
+                className="flex-grow p-2 border rounded-l"
+              />
+              <button
+                onClick={handleAddCustomTag}
+                className="bg-blue-500 text-white px-4 py-2 rounded-r"
+              >
+                <LuPlus />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

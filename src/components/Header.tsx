@@ -38,7 +38,6 @@ const Header: React.FC = () => {
           {user && (
             <div className='flex flex-col lg:flex-row lg:items-center'>
               <span className="mr-0 lg:mr-2 font-semibold">{user.email}</span>
-              <span>{user.phone}</span>
             </div>
           )}
         </div>
